@@ -15,6 +15,4 @@ COPY . .
 # Create storage directories
 RUN mkdir -p uploads processed_data
 
-EXPOSE 5000
-
 CMD ["sh", "-c", "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:${PORT:-5000} app:app"]
