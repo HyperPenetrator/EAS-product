@@ -95,5 +95,6 @@ if __name__ == "__main__":
         db.create_all()
         print("[DB] Database tables created.")
 
-    print("[Server] Excel Analytics Backend starting on http://localhost:5000")
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"[Server] Excel Analytics Backend starting on http://localhost:{port}")
+    socketio.run(app, host="0.0.0.0", port=port, debug=True, allow_unsafe_werkzeug=True)

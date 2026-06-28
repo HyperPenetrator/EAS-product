@@ -12,15 +12,14 @@ FROM nginx:alpine AS production
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Nginx config: pure static file server.
-# API/WebSocket traffic goes directly from the browser to the backend
-# service via VITE_API_URL (baked in at build time by Vite).
-RUN echo 'server { \
-  listen 80; \
+ENV PORT=80
+
+RUN mkdir -p /etc/nginx/templates && echo 'server { \
+  listen ${PORT}; \
   root /usr/share/nginx/html; \
   index index.html; \
   location / { try_files $uri $uri/ /index.html; } \
-}' > /etc/nginx/conf.d/default.conf
+}' > /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
