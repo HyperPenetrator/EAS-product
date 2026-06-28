@@ -16,11 +16,8 @@ FROM nginxinc/nginx-unprivileged:alpine AS production
 # Copy static assets with correct ownership
 COPY --chown=nginx:nginx --from=builder /app/dist /usr/share/nginx/html
 
-# Copy the custom nginx template (unprivileged nginx automatically populates /etc/nginx/conf.d/default.conf from it on startup)
-COPY --chown=nginx:nginx default.conf.template /etc/nginx/templates/default.conf.template
-
-# Default fallback if PORT is not set
-ENV PORT=8080
+# Copy the hardened custom nginx config
+COPY --chown=nginx:nginx default.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
