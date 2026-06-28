@@ -248,7 +248,8 @@ def export_results(job_id: str):
     Returns:
         Response: A freshly-generated Excel file as an attachment.
     """
-    client_token = request.headers.get("X-Client-Token")
+    # Accept token from header (API calls) or query param (direct browser downloads)
+    client_token = request.headers.get("X-Client-Token") or request.args.get("token")
     if not client_token:
         return jsonify({"error": "Missing client token"}), 400
 

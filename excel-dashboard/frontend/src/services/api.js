@@ -49,7 +49,10 @@ export const listJobs = () => api.get("/api/jobs");
 
 export const deleteJob = (jobId) => api.delete(`/api/job/${jobId}`);
 
-export const getExportUrl = (jobId) => `${BASE_URL}/api/export/${jobId}`;
+export const getExportUrl = (jobId) => {
+  const token = getOrCreateClientToken();
+  return `${BASE_URL}/api/export/${jobId}?token=${encodeURIComponent(token)}`;
+};
 
 export { BASE_URL };
 export default api;
