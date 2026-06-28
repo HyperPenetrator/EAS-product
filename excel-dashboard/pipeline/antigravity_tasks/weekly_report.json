@@ -1,0 +1,23 @@
+{
+  "id": "weekly-revenue-report",
+  "name": "Weekly Revenue Report",
+  "description": "Full data pipeline: pull latest data, clean, aggregate, build Excel report, and write executive summary.",
+  "schedule": {
+    "type": "cron",
+    "expression": "0 7 * * 1",
+    "description": "Every Monday at 7:00 AM"
+  },
+  "agent": {
+    "model": "gemini-2.5-flash",
+    "system_prompt": "You are a senior data analyst producing weekly executive reports from business data. You are precise, data-driven, and always validate before computing. You write clear, concise summaries that highlight the most important trends and anomalies.",
+    "tools": ["code_execution", "file_system", "mcp:excel-online"],
+    "max_turns": 20,
+    "temperature": 0.2
+  },
+  "prompt": "Run the weekly revenue analysis pipeline:\n1. Read the latest data from /reports/clean_data.csv (or pull from @excel-online if connected)\n2. Compute total revenue, orders, avg order value, and profit margin by region\n3. Identify top 5 and bottom 3 performing regions\n4. Flag any anomalies (revenue change >20% month-over-month)\n5. Write an executive summary (150 words max) as /reports/weekly/summary_{today}.md\n6. Save the full Excel report as /reports/weekly/report_{today}.xlsx",
+  "on_complete": {
+    "save_artifact": true,
+    "notify": "email",
+    "archive_to": "/reports/archive/"
+  }
+}

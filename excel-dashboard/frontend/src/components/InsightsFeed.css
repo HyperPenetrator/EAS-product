@@ -1,0 +1,239 @@
+.insights-feed-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.insights-intro-card {
+  padding: 24px;
+}
+
+.insights-intro-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.insights-sparkle {
+  font-size: 24px;
+  animation: pulse-glow 2s infinite;
+}
+
+.insights-intro-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.insights-summary-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+}
+
+.insights-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.insights-meta-pill {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: 100px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.insights-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.column-title {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.topics-list,
+.narratives-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topic-card {
+  padding: 20px;
+}
+
+.topic-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.topic-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.topic-confidence {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 8px;
+  border-radius: 100px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.topic-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.topic-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.keyword-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+.topic-card:hover .keyword-tag {
+  color: var(--accent-rose);
+  border-color: rgba(244, 63, 94, 0.3);
+  background: rgba(244, 63, 94, 0.05);
+}
+
+.narrative-card {
+  padding: 20px;
+  border-left-width: 4px !important;
+}
+
+.narrative-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.narrative-icon {
+  font-size: 16px;
+}
+
+.narrative-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.severity-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+}
+
+.narrative-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Severity-based Borders/Glows */
+.severity-high {
+  border-left-color: var(--accent-rose) !important;
+}
+.severity-high:hover {
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.15);
+}
+
+.severity-medium {
+  border-left-color: var(--accent-amber) !important;
+}
+.severity-medium:hover {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+.severity-low {
+  border-left-color: var(--text-muted) !important;
+}
+
+.quality-card {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.quality-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.quality-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.quality-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 4px;
+}
+
+.quality-list li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  position: relative;
+  padding-left: 20px;
+}
+
+.quality-list li::before {
+  content: "•";
+  position: absolute;
+  left: 6px;
+  color: var(--accent-amber);
+  font-weight: bold;
+}

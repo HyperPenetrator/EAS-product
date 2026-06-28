@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  # ── Flask Backend ─────────────────────────────────────────────────
+  backend:
+    build: ./backend
+    container_name: excel_dashboard_backend
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: postgresql://excel_user:excel_pass@db:5432/excel_dashboard
+      SECRET_KEY: change-me-in-production
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/processed_data:/app/processed_data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Vite / React Frontend ─────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: excel_dashboard_frontend
+    ports:
+      - "3000:80"
+    environment:
+      VITE_BACKEND_URL: http://localhost:5000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ── PostgreSQL Database ───────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: excel_dashboard_db
+    environment:
+      POSTGRES_USER: excel_user
+      POSTGRES_PASSWORD: excel_pass
+      POSTGRES_DB: excel_dashboard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U excel_user -d excel_dashboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
