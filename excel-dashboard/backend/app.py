@@ -1,5 +1,15 @@
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch(os=True, select=True, socket=True, time=True, thread=True)
+
+# Patch psycopg2 to work correctly with eventlet green threads.
+# Without this, psycopg2's C-extension sockets block the event loop,
+# causing database operations to fail or hang under load.
+try:
+    from psycogreen.gevent import patch_psycopg
+    patch_psycopg()
+    print("[PATCH] psycogreen: psycopg2 patched for green-thread compatibility.")
+except ImportError:
+    print("[PATCH] psycogreen not installed — psycopg2 may not work correctly with eventlet.")
 
 """
 Excel Analytics Dashboard — Flask Backend
@@ -32,8 +42,16 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = config.MAX_FILE_SIZE
 app.config["UPLOAD_FOLDER"] = config.UPLOAD_FOLDER
 
+# Connection pool health: detect stale/broken connections before use
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,       # Test each connection before handing it out
+    "pool_recycle": 280,         # Recycle connections every ~5 min (Railway idle timeout)
+    "pool_size": 5,
+    "max_overflow": 2,
+}
+
 # ── CORS + Socket.IO origins ─────────────────────────────────────────────────
-# In production the frontend lives on a different Render subdomain,
+# In production the frontend lives on a different Railway subdomain,
 # so both REST and WebSocket traffic need an explicit allow-list.
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")
 
@@ -75,6 +93,10 @@ with app.app_context():
         except Exception as migration_err:
             print(f"[DB] Auto-migration warning/failed (non-critical): {migration_err}")
             db.session.rollback()
+
+        # Verify DB connectivity with a simple query
+        db.session.execute(db.text("SELECT 1"))
+        print("[DB] Connection health check passed.")
             
     except Exception as e:
         print(f"[DB] CRITICAL ERROR during database initialization: {e}")

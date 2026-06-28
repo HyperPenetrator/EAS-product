@@ -11,6 +11,8 @@ python-engineio>=4.7.0
 eventlet>=0.33.0
 gunicorn<22.0.0
 psycopg2-binary>=2.9.0
+psycogreen>=1.0.0
+dnspython>=2.4.0
 Werkzeug>=2.3.0
 google-genai>=1.0.0
 pydantic>=2.0.0
