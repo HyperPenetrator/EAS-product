@@ -10,13 +10,13 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Production stage — serve with Nginx
-FROM nginx:alpine AS production
+# Production stage — serve with Nginx as non-root
+FROM nginxinc/nginx-unprivileged:alpine AS production
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Nginx config: pure static file server.
-RUN echo 'server { listen 80; root /usr/share/nginx/html; index index.html; location / { try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
+# Copy the hardened custom nginx config
+COPY default.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

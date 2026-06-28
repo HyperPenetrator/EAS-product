@@ -134,5 +134,3 @@ docker-compose up -d
 - ✅ Scheduled recurring reports
 
 ---
-
-*Built with ❤️ using Google Antigravity 2.0 · June 2026*

@@ -44,6 +44,16 @@ def compute_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
 
 def process_in_chunks(input_path: str, output_path: str, chunk_size: int = CHUNK_SIZE) -> None:
     """Stream-process a large CSV file in chunks and write combined output."""
+    # Prevent path traversal
+    base_dir = Path(__file__).resolve().parents[1]  # Workspace root
+    resolved_input = Path(input_path).resolve()
+    if not (resolved_input == base_dir or base_dir in resolved_input.parents):
+        raise ValueError(f"Access denied: Input path '{input_path}' is outside the allowed workspace.")
+
+    resolved_output = Path(output_path).resolve()
+    if not (resolved_output == base_dir or base_dir in resolved_output.parents):
+        raise ValueError(f"Access denied: Output path '{output_path}' is outside the allowed workspace.")
+
     logger.info(f"Processing in chunks of {chunk_size:,}: {input_path}")
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)

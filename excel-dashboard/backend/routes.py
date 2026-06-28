@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 
 from config import config
 from modules.database import db, ProcessingJob
-from modules.file_handler import allowed_file
+from modules.file_handler import allowed_file, verify_file_signature
 from modules.data_processor import process_file_async
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -23,6 +23,23 @@ def generate_job_id() -> str:
         str: A UUID4 string representing the job ID.
     """
     return str(uuid4())
+
+def sanitize_df_formulas(df: pd.DataFrame) -> pd.DataFrame:
+    """Escape cell values starting with =, +, -, @ to prevent formula injection."""
+    if df.empty:
+        return df
+    df_copy = df.copy()
+    for col in df_copy.columns:
+        df_copy[col] = df_copy[col].apply(
+            lambda val: f"'{val}" if isinstance(val, str) and val.strip() and val.strip()[0] in ['=', '+', '-', '@'] else val
+        )
+    return df_copy
+
+@api_bp.errorhandler(Exception)
+def handle_unexpected_error(error):
+    """Global error handler to prevent internal path/stack trace disclosure."""
+    current_app.logger.error(f"Unhandled error: {error}", exc_info=True)
+    return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @api_bp.route("/health", methods=["GET"])
 def health_check():
@@ -44,6 +61,10 @@ def upload_file():
     Returns:
         Response: A JSON response indicating upload status and the job ID.
     """
+    client_token = request.headers.get("X-Client-Token")
+    if not client_token:
+        return jsonify({"error": "Missing client token"}), 400
+
     if "file" not in request.files:
         return jsonify({"error": "No file part in request"}), 400
 
@@ -52,9 +73,10 @@ def upload_file():
     if not file.filename:
         return jsonify({"error": "No file selected"}), 400
 
-    if not allowed_file(file.filename):
+    # Validate file type using magic bytes checking
+    if not verify_file_signature(file.stream, file.filename):
         return jsonify({
-            "error": f"File type not allowed. Supported: {', '.join(config.ALLOWED_EXTENSIONS)}"
+            "error": f"Invalid file content or file type not allowed. Supported: {', '.join(config.ALLOWED_EXTENSIONS)}"
         }), 400
 
     # Save file with job_id prefix to avoid collisions
@@ -64,11 +86,12 @@ def upload_file():
     filepath = os.path.join(config.UPLOAD_FOLDER, stored_name)
     file.save(filepath)
 
-    # Create DB record
+    # Create DB record with owner_token mapping
     job = ProcessingJob(
         job_id=job_id,
         filename=file.filename,
         status="pending",
+        owner_token=client_token,
     )
     db.session.add(job)
     db.session.commit()
@@ -99,22 +122,35 @@ def get_job_status(job_id: str):
     Returns:
         Response: A JSON response with the job details, or 404 if not found.
     """
+    client_token = request.headers.get("X-Client-Token")
+    if not client_token:
+        return jsonify({"error": "Missing client token"}), 400
+
     job = ProcessingJob.query.filter_by(job_id=job_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
+
+    if job.owner_token != client_token:
+        return jsonify({"error": "Access denied"}), 403
+
     return jsonify(job.to_dict()), 200
 
 
 @api_bp.route("/jobs", methods=["GET"])
 def list_jobs():
     """
-    Return the 50 most recent processing jobs.
+    Return the 50 most recent processing jobs for the authenticated client.
     
     Returns:
         Response: A JSON list of job dictionaries.
     """
+    client_token = request.headers.get("X-Client-Token")
+    if not client_token:
+        return jsonify({"error": "Missing client token"}), 400
+
     jobs = (
         ProcessingJob.query
+        .filter_by(owner_token=client_token)
         .order_by(ProcessingJob.created_at.desc())
         .limit(50)
         .all()
@@ -125,7 +161,7 @@ def list_jobs():
 @api_bp.route("/export/<job_id>", methods=["GET"])
 def export_results(job_id: str):
     """
-    Build an Excel report **in memory** from the KPI data persisted in
+    Build an Excel report in memory from the KPI data persisted in
     the database, so downloads survive Render's ephemeral filesystem.
 
     Args:
@@ -134,9 +170,17 @@ def export_results(job_id: str):
     Returns:
         Response: A freshly-generated Excel file as an attachment.
     """
+    client_token = request.headers.get("X-Client-Token")
+    if not client_token:
+        return jsonify({"error": "Missing client token"}), 400
+
     job = ProcessingJob.query.filter_by(job_id=job_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
+
+    if job.owner_token != client_token:
+        return jsonify({"error": "Access denied"}), 403
+
     if job.status != "complete":
         return jsonify({"error": "Job is not yet complete"}), 400
     if not job.results:
@@ -153,25 +197,25 @@ def export_results(job_id: str):
             if isinstance(v, (int, float, str))
         ]
         if summary_rows:
-            pd.DataFrame(summary_rows).to_excel(
+            sanitize_df_formulas(pd.DataFrame(summary_rows)).to_excel(
                 writer, sheet_name="Summary", index=False
             )
 
         # ── Sheet 2: Monthly Trend (if present) ──────────────────
         if "monthly_data" in results and results["monthly_data"]:
-            pd.DataFrame(results["monthly_data"]).to_excel(
+            sanitize_df_formulas(pd.DataFrame(results["monthly_data"])).to_excel(
                 writer, sheet_name="Monthly Trend", index=False
             )
 
         # ── Sheet 3: Regional Breakdown (if present) ─────────────
         if "regional_data" in results and results["regional_data"]:
-            pd.DataFrame(results["regional_data"]).to_excel(
+            sanitize_df_formulas(pd.DataFrame(results["regional_data"])).to_excel(
                 writer, sheet_name="Regional", index=False
             )
 
         # ── Sheet 4: Sample Data rows (if processor stored them) ─
         if "sample_rows" in results and results["sample_rows"]:
-            pd.DataFrame(results["sample_rows"]).to_excel(
+            sanitize_df_formulas(pd.DataFrame(results["sample_rows"])).to_excel(
                 writer, sheet_name="Data", index=False
             )
 
@@ -195,9 +239,16 @@ def delete_job(job_id: str):
     Returns:
         Response: A JSON confirmation message.
     """
+    client_token = request.headers.get("X-Client-Token")
+    if not client_token:
+        return jsonify({"error": "Missing client token"}), 400
+
     job = ProcessingJob.query.filter_by(job_id=job_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
+
+    if job.owner_token != client_token:
+        return jsonify({"error": "Access denied"}), 403
 
     db.session.delete(job)
     db.session.commit()

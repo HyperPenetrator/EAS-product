@@ -7,9 +7,23 @@ if (BASE_URL && !BASE_URL.startsWith("http://") && !BASE_URL.startsWith("https:/
   BASE_URL = `https://${BASE_URL}`;
 }
 
+export const getOrCreateClientToken = () => {
+  let token = localStorage.getItem("client_token");
+  if (!token) {
+    token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+    localStorage.setItem("client_token", token);
+  }
+  return token;
+};
+
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 30000,
+});
+
+api.interceptors.request.use((config) => {
+  config.headers["X-Client-Token"] = getOrCreateClientToken();
+  return config;
 });
 
 export const uploadFile = (file, onUploadProgress) => {

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "data-files": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "d:/Projects/IT-Kill/excel-dashboard/backend/processed_data"
+      ]
+    }
+  }
+}

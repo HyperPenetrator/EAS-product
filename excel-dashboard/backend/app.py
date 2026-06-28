@@ -37,6 +37,10 @@ app.config["UPLOAD_FOLDER"] = config.UPLOAD_FOLDER
 # so both REST and WebSocket traffic need an explicit allow-list.
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")
 
+# Enforce no wildcard CORS in production mode
+if os.getenv("FLASK_ENV") == "production" and FRONTEND_URL == "*":
+    raise RuntimeError("CORS wildcard '*' is not allowed in production. Set FRONTEND_URL environment variable.")
+
 CORS(app, resources={r"/api/*": {"origins": FRONTEND_URL}})
 
 db.init_app(app)
@@ -78,7 +82,11 @@ app.register_blueprint(api_bp)
 
 @socketio.on("connect")
 def handle_connect():
-    print(f"[WS] Client connected: {request.sid}")
+    client_token = request.args.get("client_token")
+    if not client_token:
+        print(f"[WS] Connection rejected: Missing client token")
+        return False
+    print(f"[WS] Client connected: {request.sid} (Token: {client_token[:8]}...)")
     emit("connection_response", {"data": "Connected to Excel Dashboard server"})
 
 
@@ -91,17 +99,37 @@ def handle_disconnect():
 def handle_join_job(data):
     """Subscribe the client to real-time updates for a specific job."""
     job_id = data.get("job_id")
-    if job_id:
-        join_room(f"job_{job_id}")
-        emit("subscription_confirmed", {"job_id": job_id})
+    client_token = data.get("client_token")
+    if not job_id or not client_token:
+        emit("subscription_error", {"error": "Missing job_id or client_token"})
+        return
+
+    job = ProcessingJob.query.filter_by(job_id=job_id).first()
+    if not job:
+        emit("subscription_error", {"error": "Job not found"})
+        return
+
+    if job.owner_token != client_token:
+        emit("subscription_error", {"error": "Access denied"})
+        return
+
+    join_room(f"job_{job_id}")
+    emit("subscription_confirmed", {"job_id": job_id})
 
 
 @socketio.on("leave_job")
 def handle_leave_job(data):
     """Unsubscribe from job updates."""
     job_id = data.get("job_id")
-    if job_id:
-        leave_room(f"job_{job_id}")
+    client_token = data.get("client_token")
+    if not job_id or not client_token:
+        return
+
+    job = ProcessingJob.query.filter_by(job_id=job_id).first()
+    if not job or job.owner_token != client_token:
+        return
+
+    leave_room(f"job_{job_id}")
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────

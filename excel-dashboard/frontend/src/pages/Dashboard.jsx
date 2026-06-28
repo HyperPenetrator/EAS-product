@@ -6,7 +6,7 @@ import Charts from "../components/Charts";
 import DataTables from "../components/DataTables";
 import ProcessingStatus from "../components/ProcessingStatus";
 import Confetti from "../components/Confetti";
-import { uploadFile, listJobs, deleteJob } from "../services/api";
+import { uploadFile, listJobs, deleteJob, getOrCreateClientToken } from "../services/api";
 import "./Dashboard.css";
 
 // In dev: connect to same origin (Vite proxies /socket.io → Flask).
@@ -74,7 +74,10 @@ export default function Dashboard() {
 
   // ── Init WebSocket ──────────────────────────────────────────────
   useEffect(() => {
-    const sock = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+    const sock = io(SOCKET_URL, {
+      transports: ["websocket", "polling"],
+      query: { client_token: getOrCreateClientToken() }
+    });
 
     sock.on("connect", () => console.log("[WS] Connected"));
     sock.on("disconnect", () => console.log("[WS] Disconnected"));
@@ -118,7 +121,7 @@ export default function Dashboard() {
         progress: 0,
       };
       setCurrentJob(job);
-      socket?.emit("join_job", { job_id: data.job_id });
+      socket?.emit("join_job", { job_id: data.job_id, client_token: getOrCreateClientToken() });
       showToast("📤 File uploaded — processing started!", "info");
     } catch (err) {
       showToast("❌ Upload failed: " + (err?.response?.data?.error || err.message), "error");

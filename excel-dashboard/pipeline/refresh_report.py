@@ -34,6 +34,17 @@ def run_full_pipeline(raw_data_path: str, output_path: str = None) -> str:
 
     Returns the path to the generated .xlsx file.
     """
+    # Prevent path traversal
+    base_dir = Path(__file__).resolve().parents[1]  # Workspace root
+    resolved_input = Path(raw_data_path).resolve()
+    if not (resolved_input == base_dir or base_dir in resolved_input.parents):
+        raise ValueError(f"Access denied: Input path '{raw_data_path}' is outside the allowed workspace.")
+
+    if output_path:
+        resolved_output = Path(output_path).resolve()
+        if not (resolved_output == base_dir or base_dir in resolved_output.parents):
+            raise ValueError(f"Access denied: Output path '{output_path}' is outside the allowed workspace.")
+
     from data_cleaner import clean_dataset
     from aggregator import build_summary_tables
     from template_builder import build_smart_template

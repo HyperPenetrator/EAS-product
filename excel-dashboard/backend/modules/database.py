@@ -21,6 +21,7 @@ class ProcessingJob(db.Model):
     )
     results = db.Column(db.JSON)
     error_message = db.Column(db.String(1000))
+    owner_token = db.Column(db.String(255), nullable=True, index=True)
 
     def to_dict(self):
         return {
