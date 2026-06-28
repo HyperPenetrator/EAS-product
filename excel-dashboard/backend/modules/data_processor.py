@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import logging
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from google import genai
@@ -13,6 +14,8 @@ from modules.socketio_handler import (
     broadcast_complete,
     broadcast_error,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def process_file_async(app, socketio_instance, job_id: str, filepath: str):
@@ -340,7 +343,7 @@ def run_gemini_topic_modeling(df: pd.DataFrame, semantic_meta: dict) -> dict:
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        print("[AI] GEMINI_API_KEY environment variable missing. Falling back to local NLP heuristics.")
+        logger.warning("[AI] GEMINI_API_KEY environment variable missing. Falling back to local NLP heuristics.")
         return generate_mock_insights(df, semantic_meta)
         
     try:
@@ -375,7 +378,7 @@ def run_gemini_topic_modeling(df: pd.DataFrame, semantic_meta: dict) -> dict:
         return insights_data
         
     except Exception as e:
-        print(f"[AI] Gemini API processing failed: {e}. Falling back to local NLP heuristics.")
+        logger.error(f"[AI] Gemini API processing failed: {e}. Falling back to local NLP heuristics.")
         return generate_mock_insights(df, semantic_meta)
 
 

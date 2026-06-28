@@ -180,8 +180,8 @@ When a file is uploaded, an async thread execution is triggered via [data_proces
    - Calculates total/avg/max/min for the first 5 numerical variables.
    - Automatically searches for typical column candidates (like `revenue`, `cost`, `order_id`, `region`) to build standardized sales and geographical performance models.
    - Computes dynamic monthly aggregations and a null percentage data-quality score.
-4. **Excel Export Compilation (`generate_export`)**: Writes the finalized clean sheet data (up to the first 1000 rows) and a summary sheet to `processed_data/{job_id}_export.xlsx`.
-5. **WebSocket Status Broadcasting**: Pushes progress logs (10%, 30%, 60%, 85%, 100%) through [socketio_handler.py](file:///d:/Projects/IT-Kill/excel-dashboard/backend/modules/socketio_handler.py).
+4. **Excel Export Compilation (In-Memory)**: The workbook is compiled on-demand in-memory when a download is requested via the `/api/export/<job_id>` route. The data is reconstructed from the results JSON stored in the database, avoiding dependency on ephemeral local file storage.
+5. **WebSocket Status Broadcasting**: Pushes progress logs (10%, 30%, 55%, 75%, 90%, 100%) through [socketio_handler.py](file:///d:/Projects/IT-Kill/excel-dashboard/backend/modules/socketio_handler.py).
 
 ---
 

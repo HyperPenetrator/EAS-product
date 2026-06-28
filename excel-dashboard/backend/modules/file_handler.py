@@ -1,12 +1,9 @@
 import pandas as pd
-
-ALLOWED_EXTENSIONS = {"xlsx", "xls", "csv"}
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
-
+from config import config
 
 def allowed_file(filename: str) -> bool:
     """Check if the file extension is permitted."""
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in config.ALLOWED_EXTENSIONS
 
 
 def load_file(filepath: str) -> pd.DataFrame:

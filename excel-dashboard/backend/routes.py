@@ -10,24 +10,10 @@ from werkzeug.utils import secure_filename
 
 from config import config
 from modules.database import db, ProcessingJob
+from modules.file_handler import allowed_file
 from modules.data_processor import process_file_async
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
-
-def allowed_file(filename: str) -> bool:
-    """
-    Check if the uploaded file has an allowed extension.
-    
-    Args:
-        filename (str): The name of the file to check.
-        
-    Returns:
-        bool: True if the file extension is allowed, False otherwise.
-    """
-    return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower() in config.ALLOWED_EXTENSIONS
-    )
 
 def generate_job_id() -> str:
     """
