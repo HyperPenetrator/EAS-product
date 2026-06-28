@@ -11,11 +11,15 @@ import "./Dashboard.css";
 
 // In dev: connect to same origin (Vite proxies /socket.io → Flask).
 // In prod: connect to explicit backend URL (VITE_API_URL or VITE_SOCKET_URL).
-const SOCKET_URL =
+let SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ||
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_BACKEND_URL ||
   window.location.origin;
+
+if (SOCKET_URL && !SOCKET_URL.startsWith("http://") && !SOCKET_URL.startsWith("https://") && !SOCKET_URL.startsWith("//")) {
+  SOCKET_URL = `https://${SOCKET_URL}`;
+}
 
 
 export default function Dashboard() {
@@ -52,8 +56,14 @@ export default function Dashboard() {
   const fetchHistory = useCallback(async () => {
     try {
       const { data } = await listJobs();
-      setJobHistory(data);
-    } catch (_) {}
+      if (Array.isArray(data)) {
+        setJobHistory(data);
+      } else {
+        setJobHistory([]);
+      }
+    } catch (_) {
+      setJobHistory([]);
+    }
   }, []);
 
   // ── Toast helper ────────────────────────────────────────────────
@@ -240,7 +250,7 @@ export default function Dashboard() {
           )}
 
           {/* ── Job History ── */}
-          {jobHistory.length > 0 && (
+          {Array.isArray(jobHistory) && jobHistory.length > 0 && (
             <section className="section animate-fade-up" style={{ marginTop: 40 }}>
               <h2 className="section-title">Processing History</h2>
               <div className="history-grid">
