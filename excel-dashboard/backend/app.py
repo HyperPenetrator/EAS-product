@@ -43,7 +43,23 @@ db.init_app(app)
 socketio = SocketIO(app, cors_allowed_origins=FRONTEND_URL)
 
 with app.app_context():
-    db.create_all()
+    db_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+    masked_uri = db_uri
+    if "@" in db_uri:
+        try:
+            parts = db_uri.split("@")
+            prefix = parts[0].split("://")[0]
+            masked_uri = f"{prefix}://****@{parts[1]}"
+        except Exception:
+            masked_uri = "configured-db-uri"
+    print(f"[DB] Connecting to database: {masked_uri} ...")
+    try:
+        db.create_all()
+        print("[DB] Database initialization complete (tables verified/created).")
+    except Exception as e:
+        print(f"[DB] CRITICAL ERROR during database initialization: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Create storage directories
 os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
