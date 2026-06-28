@@ -60,6 +60,22 @@ with app.app_context():
     try:
         db.create_all()
         print("[DB] Database initialization complete (tables verified/created).")
+        
+        # Auto-migration: check if owner_token column exists in processing_jobs, if not, add it
+        try:
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            if inspector.has_table("processing_jobs"):
+                columns = [c["name"] for c in inspector.get_columns("processing_jobs")]
+                if "owner_token" not in columns:
+                    print("[DB] Column 'owner_token' not found in processing_jobs. Performing auto-migration...")
+                    db.session.execute(db.text("ALTER TABLE processing_jobs ADD COLUMN owner_token VARCHAR(255)"))
+                    db.session.commit()
+                    print("[DB] Auto-migration complete: 'owner_token' column added successfully.")
+        except Exception as migration_err:
+            print(f"[DB] Auto-migration warning/failed (non-critical): {migration_err}")
+            db.session.rollback()
+            
     except Exception as e:
         print(f"[DB] CRITICAL ERROR during database initialization: {e}")
         import traceback

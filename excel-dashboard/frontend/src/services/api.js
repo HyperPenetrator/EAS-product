@@ -10,7 +10,15 @@ if (BASE_URL && !BASE_URL.startsWith("http://") && !BASE_URL.startsWith("https:/
 export const getOrCreateClientToken = () => {
   let token = localStorage.getItem("client_token");
   if (!token) {
-    token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        token = crypto.randomUUID();
+      } else {
+        token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      }
+    } catch (e) {
+      token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    }
     localStorage.setItem("client_token", token);
   }
   return token;
