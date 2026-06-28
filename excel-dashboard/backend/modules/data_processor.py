@@ -54,9 +54,15 @@ def process_file_async(app, socketio_instance, job_id: str, filepath: str):
             semantic_meta = extract_semantic_metadata(df)
             results["insights"] = run_gemini_topic_modeling(df, semantic_meta)
 
-            # ── Step 5: Generate export ───────────────────────────────
-            _update(socketio_instance, db, job, job_id, 90, "processing", "Writing final Excel report...")
-            export_path = generate_export(job_id, df, results)
+            # ── Step 5: Store sample data for in-memory export ────
+            _update(socketio_instance, db, job, job_id, 90, "processing", "Persisting results to database...")
+            # Save up to 1000 cleaned rows as JSON-serializable dicts
+            # so the /export route can rebuild the workbook in-memory.
+            sample_df = df.head(1000).copy()
+            # Convert datetime columns to ISO strings for JSON storage
+            for col in sample_df.select_dtypes(include=["datetime64", "datetimetz"]).columns:
+                sample_df[col] = sample_df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
+            results["sample_rows"] = sample_df.to_dict(orient="records")
 
             # ── Step 6: Complete ──────────────────────────────────────
             job.status = "complete"
@@ -197,22 +203,9 @@ def compute_analytics(df: pd.DataFrame) -> dict:
     return results
 
 
-def generate_export(job_id: str, df: pd.DataFrame, results: dict) -> str:
-    """Write an Excel export with Data + Summary sheets."""
-    os.makedirs("processed_data", exist_ok=True)
-    export_path = os.path.join("processed_data", f"{job_id}_export.xlsx")
-
-    with pd.ExcelWriter(export_path, engine="openpyxl") as writer:
-        # First 1000 rows of raw (cleaned) data
-        df.head(1000).to_excel(writer, sheet_name="Data", index=False)
-
-        # Summary stats as a vertical table
-        summary_rows = [{"Metric": k, "Value": v}
-                        for k, v in results.items()
-                        if isinstance(v, (int, float, str))]
-        pd.DataFrame(summary_rows).to_excel(writer, sheet_name="Summary", index=False)
-
-    return export_path
+# generate_export() removed — workbooks are now built in-memory
+# at download time by the /api/export/<job_id> route, using the
+# KPI data persisted in the ProcessingJob.results JSON column.
 
 
 def _find_col(df: pd.DataFrame, candidates: list) -> str | None:

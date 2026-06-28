@@ -1,8 +1,13 @@
+import eventlet
+eventlet.monkey_patch()
+
 """
 Excel Analytics Dashboard — Flask Backend
 ==========================================
 Entry point for the Flask application.
-Run with: python app.py
+Run with:
+  Development : python app.py
+  Production  : gunicorn -k eventlet -w 1 app:app
 """
 
 import os
@@ -27,10 +32,15 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = config.MAX_FILE_SIZE
 app.config["UPLOAD_FOLDER"] = config.UPLOAD_FOLDER
 
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+# ── CORS + Socket.IO origins ─────────────────────────────────────────────────
+# In production the frontend lives on a different Render subdomain,
+# so both REST and WebSocket traffic need an explicit allow-list.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")
+
+CORS(app, resources={r"/api/*": {"origins": FRONTEND_URL}})
 
 db.init_app(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins=FRONTEND_URL)
 
 with app.app_context():
     db.create_all()

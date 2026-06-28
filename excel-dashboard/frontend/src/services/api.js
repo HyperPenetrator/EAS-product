@@ -1,8 +1,8 @@
 import axios from "axios";
 
 // In dev, Vite proxies /api and /socket.io to localhost:5000 — use empty string.
-// In production (Docker/Heroku), set VITE_BACKEND_URL=https://your-backend.com
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || "";
+// In production (Render), set VITE_API_URL=https://your-backend.onrender.com
+const BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || "";
 
 const api = axios.create({
   baseURL: BASE_URL,

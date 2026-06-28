@@ -10,8 +10,13 @@ import { uploadFile, listJobs, deleteJob } from "../services/api";
 import "./Dashboard.css";
 
 // In dev: connect to same origin (Vite proxies /socket.io → Flask).
-// In prod: connect to explicit backend URL.
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || window.location.origin;
+// In prod: connect to explicit backend URL (VITE_API_URL or VITE_SOCKET_URL).
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
+  window.location.origin;
+
 
 export default function Dashboard() {
   const [currentJob, setCurrentJob] = useState(null);

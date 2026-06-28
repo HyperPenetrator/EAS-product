@@ -1,8 +1,10 @@
 import os
 import threading
 from datetime import datetime
+from io import BytesIO
 from uuid import uuid4
 
+import pandas as pd
 from flask import Blueprint, jsonify, request, send_file, current_app
 from werkzeug.utils import secure_filename
 
@@ -137,26 +139,59 @@ def list_jobs():
 @api_bp.route("/export/<job_id>", methods=["GET"])
 def export_results(job_id: str):
     """
-    Download the generated Excel export for a completed job.
-    
+    Build an Excel report **in memory** from the KPI data persisted in
+    the database, so downloads survive Render's ephemeral filesystem.
+
     Args:
         job_id (str): The unique ID of the completed processing job.
-        
+
     Returns:
-        Response: The generated Excel file as an attachment.
+        Response: A freshly-generated Excel file as an attachment.
     """
     job = ProcessingJob.query.filter_by(job_id=job_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
     if job.status != "complete":
         return jsonify({"error": "Job is not yet complete"}), 400
+    if not job.results:
+        return jsonify({"error": "No result data available for this job"}), 404
 
-    export_path = os.path.join(config.PROCESSED_FOLDER, f"{job_id}_export.xlsx")
-    if not os.path.exists(export_path):
-        return jsonify({"error": "Export file not found. It may have been cleaned up."}), 404
+    results = job.results
+    buffer = BytesIO()
 
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        # ── Sheet 1: KPI Summary ──────────────────────────────────
+        summary_rows = [
+            {"Metric": k, "Value": v}
+            for k, v in results.items()
+            if isinstance(v, (int, float, str))
+        ]
+        if summary_rows:
+            pd.DataFrame(summary_rows).to_excel(
+                writer, sheet_name="Summary", index=False
+            )
+
+        # ── Sheet 2: Monthly Trend (if present) ──────────────────
+        if "monthly_data" in results and results["monthly_data"]:
+            pd.DataFrame(results["monthly_data"]).to_excel(
+                writer, sheet_name="Monthly Trend", index=False
+            )
+
+        # ── Sheet 3: Regional Breakdown (if present) ─────────────
+        if "regional_data" in results and results["regional_data"]:
+            pd.DataFrame(results["regional_data"]).to_excel(
+                writer, sheet_name="Regional", index=False
+            )
+
+        # ── Sheet 4: Sample Data rows (if processor stored them) ─
+        if "sample_rows" in results and results["sample_rows"]:
+            pd.DataFrame(results["sample_rows"]).to_excel(
+                writer, sheet_name="Data", index=False
+            )
+
+    buffer.seek(0)
     return send_file(
-        export_path,
+        buffer,
         as_attachment=True,
         download_name=f"analytics_report_{job_id[:8]}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -166,22 +201,17 @@ def export_results(job_id: str):
 @api_bp.route("/job/<job_id>", methods=["DELETE"])
 def delete_job(job_id: str):
     """
-    Remove a job record and its associated export file.
-    
+    Remove a job record from the database.
+
     Args:
         job_id (str): The unique ID of the processing job to delete.
-        
+
     Returns:
         Response: A JSON confirmation message.
     """
     job = ProcessingJob.query.filter_by(job_id=job_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
-
-    # Clean up export if present
-    export_path = os.path.join(config.PROCESSED_FOLDER, f"{job_id}_export.xlsx")
-    if os.path.exists(export_path):
-        os.remove(export_path)
 
     db.session.delete(job)
     db.session.commit()
